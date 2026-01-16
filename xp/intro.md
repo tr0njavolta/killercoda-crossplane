@@ -20,10 +20,12 @@ LocalStack provides a local AWS cloud stack, allowing you to develop and test cl
 ## Setup
 
 The environment is being prepared automatically. This includes:
-- Waiting for Kubernetes to be ready
 - Installing Helm
-- Creating all necessary manifest files
+- Installing Crossplane
+- Deploying LocalStack (AWS simulator)
+- Installing and configuring the AWS S3 Provider
+- Creating all necessary credentials and configurations
 
-Once you see "Setup complete!" you can proceed to the first step.
+**This takes about 3-5 minutes.** Once you see "✅ Setup Complete!" you're ready to go!
 
 Let's get started!

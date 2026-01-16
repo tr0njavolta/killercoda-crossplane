@@ -1,29 +1,21 @@
 {
     "title": "Crossplane with LocalStack",
-    "description": "Learn Crossplane by creating AWS resources using LocalStack",
+    "description": "Learn Crossplane by creating AWS resources using LocalStack - everything pre-installed!",
     "difficulty": "beginner",
-    "time": "20 minutes",
+    "time": "10 minutes",
     "details": {
         "steps": [
             {
-                "title": "Setup Kubernetes and Install Crossplane",
+                "title": "Verify the Environment",
                 "text": "step1.md"
             },
             {
-                "title": "Deploy LocalStack",
+                "title": "Create Your First S3 Bucket",
                 "text": "step2.md"
             },
             {
-                "title": "Install AWS Provider",
+                "title": "Explore and Modify Resources",
                 "text": "step3.md"
-            },
-            {
-                "title": "Configure Provider",
-                "text": "step4.md"
-            },
-            {
-                "title": "Create an S3 Bucket",
-                "text": "step5.md"
             }
         ],
         "assets": {

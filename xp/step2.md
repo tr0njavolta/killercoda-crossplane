@@ -1,44 +1,70 @@
-# Deploy LocalStack
+# Create Your First S3 Bucket
 
-LocalStack will simulate AWS services locally, allowing us to test Crossplane without using real AWS resources.
+Now let's create a managed resource - an S3 bucket in LocalStack!
 
-## Deploy LocalStack
+## Review the Bucket Manifest
 
-Apply the LocalStack deployment:
+First, let's look at what we're about to create:
 
 ```bash
-kubectl apply -f localstack-deployment.yaml
+cat /root/s3-bucket.yaml
 ```{{exec}}
 
-## Wait for LocalStack to be Ready
+This manifest defines:
+- **apiVersion**: The S3 API from the AWS provider
+- **kind**: A Bucket resource
+- **metadata.name**: The Kubernetes resource name
+- **spec.forProvider.region**: The AWS region
+- **spec.providerConfigRef**: Which ProviderConfig to use (pointing to LocalStack)
 
-Wait for the LocalStack pod to be running:
+## Create the S3 Bucket
+
+Apply the bucket manifest:
 
 ```bash
-kubectl wait --for=condition=Ready pod -l app=localstack --timeout=300s
+kubectl apply -f /root/s3-bucket.yaml
 ```{{exec}}
 
-## Verify LocalStack
+## Watch the Bucket Creation
 
-Check the LocalStack pod status:
+Check the bucket status:
 
 ```bash
-kubectl get pods -l app=localstack
+kubectl get buckets
 ```{{exec}}
 
-Get the LocalStack service:
+Watch the bucket until it's ready (this usually takes 30-60 seconds):
 
 ```bash
-kubectl get svc localstack
+kubectl get buckets -w
 ```{{exec}}
 
-## Test LocalStack Connection
+Press `Ctrl+C` once you see `READY=True` and `SYNCED=True`.
 
-Let's verify LocalStack is accessible:
+## Examine the Bucket
+
+Get detailed information about the bucket:
 
 ```bash
-kubectl run aws-cli --rm -it --restart=Never --image=amazon/aws-cli --command -- \
+kubectl describe bucket my-crossplane-bucket
+```{{exec}}
+
+Look at the Events section at the bottom - you'll see Crossplane:
+1. Creating the external resource in LocalStack
+2. Syncing the state
+3. Marking it as Ready
+
+## Verify in LocalStack
+
+Let's confirm the bucket actually exists in LocalStack:
+
+```bash
+kubectl run aws-cli --rm -it --restart=Never --image=amazon/aws-cli --env="AWS_ACCESS_KEY_ID=test" --env="AWS_SECRET_ACCESS_KEY=test" --command -- \
   aws --endpoint-url=http://localstack:4566 s3 ls
 ```{{exec}}
 
-If you see an empty list or a connection success, LocalStack is working correctly! The command will automatically clean up after execution.
+You should see `my-crossplane-bucket` in the list!
+
+🎉 Congratulations! You've created your first Crossplane managed resource. The bucket exists in LocalStack and is managed through Kubernetes.
+
+In the next step, we'll explore how to modify and manage resources.

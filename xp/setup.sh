@@ -1,17 +1,47 @@
 #!/bin/bash
 
+set -e
+
+echo "=========================================="
+echo "Setting up Crossplane with LocalStack..."
+echo "=========================================="
+
 # Wait for Kubernetes to be ready
-echo "Waiting for Kubernetes cluster to be ready..."
+echo "⏳ Waiting for Kubernetes cluster..."
 kubectl wait --for=condition=Ready nodes --all --timeout=600s
+echo "✅ Kubernetes is ready"
 
 # Install Helm if not present
 if ! command -v helm &> /dev/null; then
-    echo "Installing Helm..."
-    curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+    echo "⏳ Installing Helm..."
+    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+    echo "✅ Helm installed"
+else
+    echo "✅ Helm already installed"
 fi
 
+# Add Crossplane Helm repo
+echo "⏳ Adding Crossplane Helm repository..."
+helm repo add crossplane-stable https://charts.crossplane.io/stable
+helm repo update
+echo "✅ Helm repository added"
+
+# Create crossplane-system namespace
+echo "⏳ Creating crossplane-system namespace..."
+kubectl create namespace crossplane-system 2>/dev/null || true
+echo "✅ Namespace ready"
+
+# Install Crossplane
+echo "⏳ Installing Crossplane (this may take 2-3 minutes)..."
+helm install crossplane \
+  --namespace crossplane-system \
+  crossplane-stable/crossplane \
+  --wait \
+  --timeout 10m
+echo "✅ Crossplane installed"
+
 # Create all manifest files
-echo "Creating manifest files..."
+echo "⏳ Creating manifest files..."
 
 # LocalStack deployment
 cat > /root/localstack-deployment.yaml <<'EOF'
@@ -86,12 +116,46 @@ spec:
           timeoutSeconds: 3
 EOF
 
+# Deploy LocalStack
+echo "⏳ Deploying LocalStack..."
+kubectl apply -f /root/localstack-deployment.yaml
+echo "✅ LocalStack deployment created"
+
+# Wait for LocalStack
+echo "⏳ Waiting for LocalStack to be ready..."
+kubectl wait --for=condition=Ready pod -l app=localstack --timeout=300s
+echo "✅ LocalStack is running"
+
+# Install AWS Provider
+echo "⏳ Installing AWS S3 Provider..."
+cat <<EOF | kubectl apply -f -
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws-s3
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-s3:v1.16.0
+EOF
+echo "✅ Provider installation started"
+
+# Wait for provider to be healthy
+echo "⏳ Waiting for provider to be healthy (this may take 2-3 minutes)..."
+kubectl wait --for=condition=Healthy provider.pkg.crossplane.io/provider-aws-s3 --timeout=600s
+echo "✅ AWS S3 Provider is healthy"
+
 # AWS credentials
 cat > /root/aws-credentials.txt <<'EOF'
 [default]
 aws_access_key_id = test
 aws_secret_access_key = test
 EOF
+
+# Create AWS credentials secret
+echo "⏳ Creating AWS credentials secret..."
+kubectl create secret generic aws-creds \
+  -n crossplane-system \
+  --from-file=credentials=/root/aws-credentials.txt
+echo "✅ AWS credentials secret created"
 
 # Provider config
 cat > /root/provider-config.yaml <<'EOF'
@@ -117,6 +181,12 @@ spec:
   s3_use_path_style: true
 EOF
 
+# Apply provider config
+echo "⏳ Configuring AWS Provider..."
+kubectl apply -f /root/provider-config.yaml
+sleep 5  # Give it a moment to register
+echo "✅ Provider configured"
+
 # S3 bucket
 cat > /root/s3-bucket.yaml <<'EOF'
 apiVersion: s3.aws.upbound.io/v1beta1
@@ -130,5 +200,18 @@ spec:
     name: default
 EOF
 
-echo "Setup complete! All files created in /root/"
-ls -la /root/*.yaml /root/*.txt
+echo ""
+echo "=========================================="
+echo "✅ Setup Complete!"
+echo "=========================================="
+echo ""
+echo "📦 Installed:"
+echo "  • Crossplane $(kubectl get deployment crossplane -n crossplane-system -o jsonpath='{.spec.template.spec.containers[0].image}' | cut -d: -f2)"
+echo "  • AWS S3 Provider"
+echo "  • LocalStack (AWS simulator)"
+echo ""
+echo "📁 Files created in /root/:"
+ls -1 /root/*.yaml /root/*.txt 2>/dev/null | sed 's/^/  • /'
+echo ""
+echo "🚀 You're ready to start creating managed resources!"
+echo ""

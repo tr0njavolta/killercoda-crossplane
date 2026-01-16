@@ -1,54 +1,124 @@
-# Install AWS Provider
+# Explore and Modify Resources
 
-Crossplane uses Providers to interact with external APIs. We'll install the AWS Provider to manage AWS resources.
+Let's explore how Crossplane manages resources and try making some changes.
 
-## Install the AWS Provider
+## View Resource Status
 
-Create a Provider resource:
+Get a summary of your bucket:
+
+```bash
+kubectl get bucket my-crossplane-bucket
+```{{exec}}
+
+Get the full resource definition in YAML:
+
+```bash
+kubectl get bucket my-crossplane-bucket -o yaml
+```{{exec}}
+
+Notice the `status` section - Crossplane adds this to track the external resource state.
+
+## Add Tags to the Bucket
+
+Let's modify the bucket to add some tags. Open the editor:
+
+```bash
+kubectl edit bucket my-crossplane-bucket
+```{{exec}}
+
+Find the `spec.forProvider` section and add tags under it (maintain proper YAML indentation):
+
+```yaml
+spec:
+  forProvider:
+    region: us-east-1
+    tags:
+      environment: demo
+      managed-by: crossplane
+```
+
+Save and exit (`:wq` in vim).
+
+## Watch Crossplane Sync the Change
+
+Crossplane will detect the change and update LocalStack automatically:
+
+```bash
+kubectl describe bucket my-crossplane-bucket
+```{{exec}}
+
+Look at the Events - you should see Crossplane updating the external resource.
+
+## Create a Second Bucket
+
+Let's create another bucket using kubectl directly:
 
 ```bash
 cat <<EOF | kubectl apply -f -
-apiVersion: pkg.crossplane.io/v1
-kind: Provider
+apiVersion: s3.aws.upbound.io/v1beta1
+kind: Bucket
 metadata:
-  name: provider-aws-s3
+  name: my-second-bucket
 spec:
-  package: xpkg.upbound.io/upbound/provider-aws-s3:v1.16.0
+  forProvider:
+    region: us-west-2
+  providerConfigRef:
+    name: default
 EOF
 ```{{exec}}
 
-## Wait for Provider Installation
+## List All Buckets
 
-The Provider will be downloaded and installed. This may take a minute or two.
-
-Watch the provider installation:
+View all buckets managed by Crossplane:
 
 ```bash
-kubectl get providers
+kubectl get buckets
 ```{{exec}}
 
-Wait until the provider shows as HEALTHY and INSTALLED:
+Verify both buckets exist in LocalStack:
 
 ```bash
-kubectl wait --for=condition=Healthy provider.pkg.crossplane.io/provider-aws-s3 --timeout=300s
+kubectl run aws-cli --rm -it --restart=Never --image=amazon/aws-cli --env="AWS_ACCESS_KEY_ID=test" --env="AWS_SECRET_ACCESS_KEY=test" --command -- \
+  aws --endpoint-url=http://localstack:4566 s3 ls
 ```{{exec}}
 
-## Verify Provider Pods
+## Understanding Resource Lifecycle
 
-Check that the provider pod is running:
+When you delete a Crossplane resource, it also deletes the external resource. Let's try it:
 
 ```bash
-kubectl get pods -n crossplane-system
+kubectl delete bucket my-second-bucket
 ```{{exec}}
 
-You should now see additional pods for the AWS S3 provider.
-
-## Check Available Resources
-
-See what resources the provider makes available:
+Watch as Crossplane deletes the bucket from LocalStack:
 
 ```bash
-kubectl get crds | grep aws
+kubectl get buckets -w
 ```{{exec}}
 
-You should see Custom Resource Definitions (CRDs) for AWS S3 resources like buckets.
+Press `Ctrl+C` after the bucket is gone.
+
+Verify it's removed from LocalStack:
+
+```bash
+kubectl run aws-cli --rm -it --restart=Never --image=amazon/aws-cli --env="AWS_ACCESS_KEY_ID=test" --env="AWS_SECRET_ACCESS_KEY=test" --command -- \
+  aws --endpoint-url=http://localstack:4566 s3 ls
+```{{exec}}
+
+## Cleanup (Optional)
+
+If you want to clean up your first bucket:
+
+```bash
+kubectl delete bucket my-crossplane-bucket
+```{{exec}}
+
+## Key Concepts
+
+You've learned:
+- **Declarative Management**: Describe desired state, Crossplane makes it happen
+- **Drift Detection**: Crossplane continuously syncs Kubernetes state with external resources
+- **Lifecycle Management**: Creating/updating/deleting Kubernetes resources manages external infrastructure
+- **GitOps Ready**: All resources are defined as YAML, perfect for version control
+
+Great job! Check out the finish page for next steps.
