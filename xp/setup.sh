@@ -179,13 +179,28 @@ spec:
   skip_metadata_api_check: true
   skip_requesting_account_id: true
   s3_use_path_style: true
+  s3_force_path_style: true
 EOF
 
 # Apply provider config
 echo "⏳ Configuring AWS Provider..."
 kubectl apply -f /root/provider-config.yaml
-sleep 5  # Give it a moment to register
-echo "✅ Provider configured"
+
+# Wait a moment for the ProviderConfig to be processed
+echo "⏳ Waiting for ProviderConfig to be ready..."
+sleep 10
+
+# Verify ProviderConfig was created
+if kubectl get providerconfig default &>/dev/null; then
+    echo "✅ Provider configured"
+else
+    echo "⚠️  Warning: ProviderConfig may not be ready yet. Checking available CRDs..."
+    kubectl get crd | grep providerconfig
+    echo "Retrying ProviderConfig creation..."
+    kubectl apply -f /root/provider-config.yaml
+    sleep 5
+    echo "✅ Provider configuration applied"
+fi
 
 # S3 bucket
 cat > /root/s3-bucket.yaml <<'EOF'
@@ -212,6 +227,12 @@ echo "  • LocalStack (AWS simulator)"
 echo ""
 echo "📁 Files created in /root/:"
 ls -1 /root/*.yaml /root/*.txt 2>/dev/null | sed 's/^/  • /'
+echo ""
+echo "🔍 Quick verification:"
+echo "  • Crossplane pods: $(kubectl get pods -n crossplane-system --no-headers 2>/dev/null | wc -l) running"
+echo "  • LocalStack pod: $(kubectl get pods -l app=localstack --no-headers 2>/dev/null | grep Running | wc -l)/1 ready"
+echo "  • AWS Provider: $(kubectl get provider provider-aws-s3 -o jsonpath='{.status.conditions[?(@.type=="Healthy")].status}' 2>/dev/null || echo 'checking...')"
+echo "  • ProviderConfig: $(kubectl get providerconfig default -o jsonpath='{.metadata.name}' 2>/dev/null || echo 'checking...')"
 echo ""
 echo "🚀 You're ready to start creating managed resources!"
 echo ""

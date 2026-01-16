@@ -41,6 +41,32 @@ kubectl get buckets -w
 
 Press `Ctrl+C` once you see `READY=True` and `SYNCED=True`.
 
+**Troubleshooting**: If you see `SYNCED=False` with a "301 Moved Permanently" error, the ProviderConfig needs to be updated. Run:
+
+```bash
+kubectl delete providerconfig default
+kubectl apply -f /root/provider-config.yaml
+```{{exec}}
+
+Wait a moment for the configuration to take effect:
+
+```bash
+sleep 10
+```{{exec}}
+
+Then delete and recreate the bucket:
+
+```bash
+kubectl delete bucket my-crossplane-bucket
+kubectl apply -f /root/s3-bucket.yaml
+```{{exec}}
+
+Now watch it again:
+
+```bash
+kubectl get buckets -w
+```{{exec}}
+
 ## Examine the Bucket
 
 Get detailed information about the bucket:
