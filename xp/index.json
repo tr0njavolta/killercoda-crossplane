@@ -1,6 +1,6 @@
 {
-    "title": "Crossplane with LocalStack",
-    "description": "Learn Crossplane by creating AWS resources using LocalStack - everything pre-installed!",
+    "title": "Crossplane v2 with LocalStack",
+    "description": "Learn Crossplane v2 by creating AWS resources using LocalStack - everything pre-installed!",
     "difficulty": "beginner",
     "time": "10 minutes",
     "details": {

@@ -1,18 +1,24 @@
 # Congratulations!
 
-You've successfully completed the Crossplane with LocalStack scenario!
+You've successfully completed the Crossplane v2 with LocalStack scenario!
 
 ## What You Accomplished
 
-✅ Verified a complete Crossplane installation
+✅ Worked with a complete Crossplane v2 installation
 ✅ Created S3 buckets using Kubernetes manifests  
 ✅ Modified resources and watched Crossplane sync changes
 ✅ Managed the full lifecycle of cloud resources
 ✅ Explored declarative infrastructure management
 
-## Key Concepts Mastered
+## Key Crossplane v2 Features
 
-**Crossplane Architecture**:
+**What's New in v2**:
+- **Composition Functions**: Write custom composition logic in any language (Python, Go, TypeScript)
+- **Enhanced Validation**: Improved schema validation and type checking
+- **Environment Configs**: Dynamic configuration from cluster state
+- **Provider Framework v2**: More stable, efficient, and feature-rich providers
+
+**Core Architecture**:
 - **Providers**: Extend Crossplane to manage external services (AWS, GCP, Azure, databases, etc.)
 - **Managed Resources**: Kubernetes Custom Resources representing cloud infrastructure
 - **ProviderConfigs**: Configuration for how providers connect to external systems
@@ -35,22 +41,44 @@ Try other Crossplane providers:
 - **Kubernetes**: `provider-kubernetes` to manage K8s resources across clusters
 - **Helm**: `provider-helm` to deploy Helm charts as managed resources
 
-### Advanced Crossplane Concepts
+### Advanced Crossplane v2 Concepts
 
-1. **Composite Resources (XRs)**: Create custom APIs for your infrastructure
-   ```bash
-   # Example: Define a "Database" that provisions RDS + Security Group + Subnet
+1. **Composition Functions**: Create custom composition logic
+   ```yaml
+   apiVersion: apiextensions.crossplane.io/v2alpha1
+   kind: Composition
+   metadata:
+     name: my-platform
+   spec:
+     compositeTypeRef:
+       apiVersion: example.org/v1
+       kind: XPlatform
+     mode: Pipeline
+     pipeline:
+     - step: patch-and-transform
+       functionRef:
+         name: function-patch-and-transform
+     - step: auto-ready
+       functionRef:
+         name: function-auto-ready
    ```
 
-2. **Compositions**: Reusable infrastructure patterns
-   ```bash
-   # Template: One Database definition -> multiple cloud implementations
+2. **Environment Configs**: Dynamic configuration from cluster state
+   ```yaml
+   apiVersion: apiextensions.crossplane.io/v1alpha1
+   kind: EnvironmentConfig
+   metadata:
+     name: prod-environment
+   spec:
+     environment:
+       defaultData:
+         region: us-west-2
+         tags:
+           environment: production
    ```
 
-3. **Claims**: Self-service infrastructure for developers
-   ```bash
-   # Developers request "a database", ops controls implementation
-   ```
+3. **Composite Resources (XRs)**: Create custom APIs for your infrastructure
+4. **Claims**: Self-service infrastructure for developers
 
 ### Try Real Cloud Providers
 
@@ -75,7 +103,9 @@ kubectl create secret generic aws-creds \
 
 ## Resources
 
-- 📚 [Crossplane Documentation](https://docs.crossplane.io/)
+- 📚 [Crossplane v2 Documentation](https://docs.crossplane.io/v2.1/)
+- 🆕 [What's New in v2](https://blog.crossplane.io/crossplane-v2/)
+- 🔧 [Composition Functions](https://docs.crossplane.io/v2.1/concepts/composition-functions/)
 - 🐙 [Crossplane GitHub](https://github.com/crossplane/crossplane)
 - 🏪 [Upbound Marketplace](https://marketplace.upbound.io/) - Browse 100+ providers
 - 💬 [Crossplane Slack](https://slack.crossplane.io/) - Join the community
@@ -85,7 +115,7 @@ kubectl create secret generic aws-creds \
 
 Did you enjoy this scenario? Consider:
 - ⭐ Star [Crossplane on GitHub](https://github.com/crossplane/crossplane)
-- 🐦 Share what you learned on social media
+- 🐦 Share what you learned about Crossplane v2 on social media
 - 🤝 Join the Crossplane community
 
-Thank you for learning Crossplane! You're now ready to manage infrastructure the Kubernetes way. 🚀
+Thank you for learning Crossplane v2! You're now ready to manage infrastructure the Kubernetes way with the latest features. 🚀
