@@ -1,0 +1,48 @@
+{
+    "title": "Crossplane with LocalStack",
+    "description": "Learn Crossplane by creating AWS resources using LocalStack",
+    "difficulty": "beginner",
+    "time": "20 minutes",
+    "details": {
+        "steps": [
+            {
+                "title": "Setup Kubernetes and Install Crossplane",
+                "text": "step1.md"
+            },
+            {
+                "title": "Deploy LocalStack",
+                "text": "step2.md"
+            },
+            {
+                "title": "Install AWS Provider",
+                "text": "step3.md"
+            },
+            {
+                "title": "Configure Provider",
+                "text": "step4.md"
+            },
+            {
+                "title": "Create an S3 Bucket",
+                "text": "step5.md"
+            }
+        ],
+        "assets": {
+            "host01": [
+                {"file": "setup.sh", "target": "/root", "chmod": "+x"},
+                {"file": "localstack-deployment.yaml", "target": "/root"},
+                {"file": "aws-credentials.txt", "target": "/root"},
+                {"file": "provider-config.yaml", "target": "/root"},
+                {"file": "s3-bucket.yaml", "target": "/root"}
+            ]
+        },
+        "intro": {
+            "text": "intro.md"
+        },
+        "finish": {
+            "text": "finish.md"
+        }
+    },
+    "backend": {
+        "imageid": "kubernetes-kubeadm-2nodes"
+    }
+}
