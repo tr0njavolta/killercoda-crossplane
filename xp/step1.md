@@ -38,15 +38,64 @@ kubectl get providers
 
 You should see `provider-aws-s3` with `INSTALLED: True` and `HEALTHY: True`.
 
+**Troubleshooting**: If no providers are found, the installation may have failed. Check the logs:
+
+```bash
+kubectl logs -n crossplane-system -l app.kubernetes.io/name=crossplane --tail=50
+```{{exec}}
+
+Try installing the provider manually:
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws-s3
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-s3:v1.16.0
+EOF
+```{{exec}}
+
+Wait for it to install:
+
+```bash
+kubectl wait --for=condition=Healthy provider.pkg.crossplane.io/provider-aws-s3 --timeout=300s
+```{{exec}}
+
 ## Check Provider Configuration
 
 View the ProviderConfig that connects to LocalStack:
 
 ```bash
-kubectl get providerconfigs
+kubectl get providerconfig
 ```{{exec}}
 
-You should see a `default` ProviderConfig.
+You should see a `default` ProviderConfig. Let's look at its details:
+
+```bash
+kubectl describe providerconfig default
+```{{exec}}
+
+**Note**: If the ProviderConfig is not found, it may still be processing. First verify the CRD exists:
+
+```bash
+kubectl get crd | grep providerconfig
+```{{exec}}
+
+If you see `providerconfigs.aws.upbound.io`, then you can recreate the config:
+
+```bash
+kubectl apply -f /root/provider-config.yaml
+```{{exec}}
+
+Then wait a moment and check again:
+
+```bash
+kubectl get providerconfig
+```{{exec}}
+
+If the CRD doesn't exist, the provider may not be fully installed yet. Go back and check the provider status.
 
 ## Test LocalStack Connection
 

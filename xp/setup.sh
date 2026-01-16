@@ -136,11 +136,53 @@ metadata:
 spec:
   package: xpkg.upbound.io/upbound/provider-aws-s3:v1.16.0
 EOF
+
+# Check if provider was created
+if kubectl get provider provider-aws-s3 &>/dev/null; then
+    echo "✅ Provider resource created"
+else
+    echo "❌ Failed to create provider resource"
+    echo "Checking if Provider CRD exists..."
+    kubectl get crd providers.pkg.crossplane.io
+    exit 1
+fi
+
 echo "✅ Provider installation started"
 
-# Wait for provider to be healthy
-echo "⏳ Waiting for provider to be healthy (this may take 2-3 minutes)..."
-kubectl wait --for=condition=Healthy provider.pkg.crossplane.io/provider-aws-s3 --timeout=600s
+# Wait for provider to be installed first (not just healthy)
+echo "⏳ Waiting for provider to be installed (this may take 2-3 minutes)..."
+max_attempts=60
+attempt=0
+while [ $attempt -lt $max_attempts ]; do
+    installed=$(kubectl get provider provider-aws-s3 -o jsonpath='{.status.conditions[?(@.type=="Installed")].status}' 2>/dev/null)
+    if [ "$installed" == "True" ]; then
+        echo "✅ Provider installed successfully"
+        break
+    fi
+    echo -n "."
+    sleep 5
+    attempt=$((attempt + 1))
+done
+
+if [ $attempt -eq $max_attempts ]; then
+    echo ""
+    echo "❌ Provider installation timed out"
+    echo "Current provider status:"
+    kubectl get provider provider-aws-s3 -o yaml
+    exit 1
+fi
+
+# Now wait for provider to be healthy
+echo "⏳ Waiting for provider to be healthy..."
+kubectl wait --for=condition=Healthy provider.pkg.crossplane.io/provider-aws-s3 --timeout=300s || {
+    echo "❌ Provider failed to become healthy"
+    echo "Provider status:"
+    kubectl describe provider provider-aws-s3
+    echo ""
+    echo "Provider pods:"
+    kubectl get pods -n crossplane-system
+    exit 1
+}
 echo "✅ AWS S3 Provider is healthy"
 
 # AWS credentials
@@ -187,19 +229,49 @@ echo "⏳ Configuring AWS Provider..."
 kubectl apply -f /root/provider-config.yaml
 
 # Wait a moment for the ProviderConfig to be processed
-echo "⏳ Waiting for ProviderConfig to be ready..."
-sleep 10
+echo "⏳ Waiting for ProviderConfig CRD to be available..."
+max_attempts=30
+attempt=0
+while [ $attempt -lt $max_attempts ]; do
+    if kubectl get crd providerconfigs.aws.upbound.io &>/dev/null; then
+        echo "✅ ProviderConfig CRD is available"
+        break
+    fi
+    echo -n "."
+    sleep 2
+    attempt=$((attempt + 1))
+done
+
+if [ $attempt -eq $max_attempts ]; then
+    echo ""
+    echo "❌ ProviderConfig CRD not found after waiting"
+    echo "Available CRDs:"
+    kubectl get crd | grep -i provider
+    exit 1
+fi
+
+# Now apply the ProviderConfig
+echo "⏳ Applying ProviderConfig..."
+kubectl apply -f /root/provider-config.yaml
 
 # Verify ProviderConfig was created
+sleep 5
 if kubectl get providerconfig default &>/dev/null; then
     echo "✅ Provider configured"
 else
-    echo "⚠️  Warning: ProviderConfig may not be ready yet. Checking available CRDs..."
-    kubectl get crd | grep providerconfig
+    echo "⚠️  Warning: ProviderConfig may not be ready yet"
+    echo "Checking available ProviderConfigs..."
+    kubectl get providerconfig --all-namespaces 2>/dev/null || echo "None found"
     echo "Retrying ProviderConfig creation..."
     kubectl apply -f /root/provider-config.yaml
     sleep 5
-    echo "✅ Provider configuration applied"
+    if kubectl get providerconfig default &>/dev/null; then
+        echo "✅ Provider configuration applied"
+    else
+        echo "❌ Failed to create ProviderConfig"
+        kubectl get crd | grep providerconfig
+        exit 1
+    fi
 fi
 
 # S3 bucket
