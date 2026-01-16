@@ -28,15 +28,12 @@
         ],
         "assets": {
             "host01": [
-                {"file": "setup.sh", "target": "/root", "chmod": "+x"},
-                {"file": "localstack-deployment.yaml", "target": "/root"},
-                {"file": "aws-credentials.txt", "target": "/root"},
-                {"file": "provider-config.yaml", "target": "/root"},
-                {"file": "s3-bucket.yaml", "target": "/root"}
+                {"file": "setup.sh", "target": "/root", "chmod": "+x"}
             ]
         },
         "intro": {
-            "text": "intro.md"
+            "text": "intro.md",
+            "foreground": "setup.sh"
         },
         "finish": {
             "text": "finish.md"
@@ -44,5 +41,8 @@
     },
     "backend": {
         "imageid": "kubernetes-kubeadm-2nodes"
+    },
+    "interface": {
+        "layout": "ide"
     }
 }

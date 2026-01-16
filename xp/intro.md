@@ -17,4 +17,13 @@ Crossplane is an open-source Kubernetes extension that transforms your cluster i
 
 LocalStack provides a local AWS cloud stack, allowing you to develop and test cloud applications without incurring AWS costs. Perfect for learning Crossplane!
 
+## Setup
+
+The environment is being prepared automatically. This includes:
+- Waiting for Kubernetes to be ready
+- Installing Helm
+- Creating all necessary manifest files
+
+Once you see "Setup complete!" you can proceed to the first step.
+
 Let's get started!
