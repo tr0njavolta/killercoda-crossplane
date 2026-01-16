@@ -32,15 +32,13 @@ kubectl create namespace crossplane-system 2>/dev/null || true
 echo "✅ Namespace ready"
 
 # Install Crossplane
-echo "⏳ Installing Crossplane v2 (this may take 2-3 minutes)..."
+echo "⏳ Installing Crossplane (this may take 2-3 minutes)..."
 helm install crossplane \
   --namespace crossplane-system \
   crossplane-stable/crossplane \
-  --version 2.1.3 \
   --wait \
-  --timeout 10m \
-  --set args='{--enable-composition-webhook-schema-validation,--enable-environment-configs}'
-echo "✅ Crossplane v2 installed"
+  --timeout 10m
+echo "✅ Crossplane installed"
 
 # Create all manifest files
 echo "⏳ Creating manifest files..."
@@ -129,15 +127,14 @@ kubectl wait --for=condition=Ready pod -l app=localstack --timeout=300s
 echo "✅ LocalStack is running"
 
 # Install AWS Provider
-echo "⏳ Installing AWS S3 Provider (v2 compatible)..."
+echo "⏳ Installing AWS S3 Provider..."
 cat <<EOF | kubectl apply -f -
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
   name: provider-aws-s3
 spec:
-  package: xpkg.upbound.io/upbound/provider-aws-s3:v1.18.0
-  packagePullPolicy: IfNotPresent
+  package: xpkg.upbound.io/upbound/provider-aws-s3:v1.14.0
 EOF
 
 # Check if provider was created
