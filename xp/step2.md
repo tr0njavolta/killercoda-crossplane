@@ -1,129 +1,96 @@
-# Explore and Manage Resources
+# Create Your First S3 Bucket
 
-Let's explore how Crossplane manages resources and try making some changes.
+Now let's create a managed resource - an S3 bucket in LocalStack!
 
-## View Resource Status
+## Review the Bucket Manifest
 
-Get a summary of your bucket:
-
-```bash
-kubectl get bucket my-crossplane-bucket
-```{{exec}}
-
-Get the full resource definition:
+First, let's look at what we're about to create:
 
 ```bash
-kubectl get bucket my-crossplane-bucket -o yaml
+cat /root/s3-bucket.yaml
 ```{{exec}}
 
-Notice the `status` section - Crossplane adds this to track the external resource state.
+This manifest defines:
+- **apiVersion**: The S3 API from the AWS provider
+- **kind**: A Bucket resource
+- **metadata.name**: The Kubernetes resource name
+- **spec.forProvider.region**: The AWS region
+- **spec.providerConfigRef**: Which ProviderConfig to use (pointing to LocalStack)
 
-## Create a Second Bucket
+## Create the S3 Bucket
 
-Let's create another bucket using kubectl directly:
+Apply the bucket manifest:
 
 ```bash
-cat <<EOF | kubectl apply -f -
-apiVersion: s3.aws.upbound.io/v1beta1
-kind: Bucket
-metadata:
-  name: my-second-bucket
-spec:
-  forProvider:
-    region: us-west-2
-  providerConfigRef:
-    name: default
-EOF
+kubectl apply -f /root/s3-bucket.yaml
 ```{{exec}}
 
-## List All Buckets
+## Watch the Bucket Creation
 
-View all buckets managed by Crossplane:
+Check the bucket status:
 
 ```bash
 kubectl get buckets
 ```{{exec}}
 
-Watch them become ready:
+Watch the bucket until it's ready (this usually takes 30-60 seconds):
 
 ```bash
 kubectl get buckets -w
 ```{{exec}}
 
-Press `Ctrl+C` once both show `READY=True`.
+Press `Ctrl+C` once you see `READY=True` and `SYNCED=True`.
 
-Verify both exist in LocalStack:
-
-```bash
-kubectl run aws-cli --rm -it --restart=Never --image=amazon/aws-cli --env="AWS_ACCESS_KEY_ID=test" --env="AWS_SECRET_ACCESS_KEY=test" --command -- \
-  aws --endpoint-url=http://localstack:4566 s3 ls
-```{{exec}}
-
-## Understanding Resource Lifecycle
-
-When you delete a Crossplane resource, it also deletes the external resource. Let's try it:
+**Troubleshooting**: If you see `SYNCED=False` with a "301 Moved Permanently" error, the ProviderConfig needs to be updated. Run:
 
 ```bash
-kubectl delete bucket my-second-bucket
+kubectl delete providerconfig default
+kubectl apply -f /root/provider-config.yaml
 ```{{exec}}
 
-Watch as Crossplane deletes it:
+Wait a moment for the configuration to take effect:
 
 ```bash
-kubectl get buckets
+sleep 10
 ```{{exec}}
 
-Verify it's removed from LocalStack:
+Then delete and recreate the bucket:
 
 ```bash
-kubectl run aws-cli --rm -it --restart=Never --image=amazon/aws-cli --env="AWS_ACCESS_KEY_ID=test" --env="AWS_SECRET_ACCESS_KEY=test" --command -- \
-  aws --endpoint-url=http://localstack:4566 s3 ls
+kubectl delete bucket my-crossplane-bucket
+kubectl apply -f /root/s3-bucket.yaml
 ```{{exec}}
 
-Only `my-crossplane-bucket` should remain.
-
-## Add Tags to Your Bucket
-
-You can modify resources by editing them. Let's add tags:
+Now watch it again:
 
 ```bash
-kubectl edit bucket my-crossplane-bucket
+kubectl get buckets -w
 ```{{exec}}
 
-Find the `spec.forProvider` section and add tags (maintain proper YAML indentation):
+## Examine the Bucket
 
-```yaml
-spec:
-  forProvider:
-    region: us-east-1
-    tags:
-      environment: demo
-      managed-by: crossplane
-```
-
-Save and exit (`:wq` in vim).
-
-Watch Crossplane sync the change:
+Get detailed information about the bucket:
 
 ```bash
 kubectl describe bucket my-crossplane-bucket
 ```{{exec}}
 
-Look at the Events - Crossplane updated the external resource!
+Look at the Events section at the bottom - you'll see Crossplane:
+1. Creating the external resource in LocalStack
+2. Syncing the state
+3. Marking it as Ready
 
-## Cleanup (Optional)
+## Verify in LocalStack
 
-If you want to clean up your first bucket:
+Let's confirm the bucket actually exists in LocalStack:
 
 ```bash
-kubectl delete bucket my-crossplane-bucket
+kubectl run aws-cli --rm -it --restart=Never --image=amazon/aws-cli --env="AWS_ACCESS_KEY_ID=test" --env="AWS_SECRET_ACCESS_KEY=test" --command -- \
+  aws --endpoint-url=http://localstack:4566 s3 ls
 ```{{exec}}
 
-## Key Concepts You've Learned
+You should see `my-crossplane-bucket` in the list!
 
-- **Declarative Management**: Describe desired state, Crossplane makes it happen
-- **Drift Detection**: Crossplane continuously syncs Kubernetes state with external resources
-- **Lifecycle Management**: Creating/updating/deleting Kubernetes resources manages external infrastructure
-- **GitOps Ready**: All resources are defined as YAML, perfect for version control
+🎉 Congratulations! You've created your first Crossplane managed resource. The bucket exists in LocalStack and is managed through Kubernetes.
 
-Great job! You've completed the scenario. Check out the finish page for next steps.
+In the next step, we'll explore how to modify and manage resources.
