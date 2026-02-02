@@ -6,20 +6,6 @@ echo "=========================================="
 echo "Setting up Crossplane with LocalStack..."
 echo "=========================================="
 
-# Wait for Kubernetes to be ready
-echo "⏳ Waiting for Kubernetes cluster..."
-kubectl wait --for=condition=Ready nodes --all --timeout=600s
-echo "✅ Kubernetes is ready"
-
-# Install Helm if not present
-if ! command -v helm &> /dev/null; then
-    echo "⏳ Installing Helm..."
-    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-    echo "✅ Helm installed"
-else
-    echo "✅ Helm already installed"
-fi
-
 # Add Crossplane Helm repo
 echo "⏳ Adding Crossplane Helm repository..."
 helm repo add crossplane-stable https://charts.crossplane.io/stable
@@ -34,19 +20,15 @@ echo "✅ Namespace ready"
 # Install Crossplane
 echo "⏳ Installing Crossplane v2 (this may take 2-3 minutes)..."
 helm install crossplane \
-  --namespace crossplane-system \
-  crossplane-stable/crossplane \
-  --version 2.1.3 \
-  --wait \
-  --timeout 10m \
-  --set args='{--enable-composition-webhook-schema-validation,--enable-environment-configs}'
+--namespace crossplane-system \
+--create-namespace crossplane-stable/crossplane
 echo "✅ Crossplane v2 installed"
 
 # Create all manifest files
 echo "⏳ Creating manifest files..."
 
 # LocalStack deployment
-cat > /root/localstack-deployment.yaml <<'EOF'
+cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: Service
 metadata:
@@ -120,73 +102,21 @@ EOF
 
 # Deploy LocalStack
 echo "⏳ Deploying LocalStack..."
-kubectl apply -f /root/localstack-deployment.yaml
 echo "✅ LocalStack deployment created"
-
-# Wait for LocalStack
-echo "⏳ Waiting for LocalStack to be ready..."
-kubectl wait --for=condition=Ready pod -l app=localstack --timeout=300s
-echo "✅ LocalStack is running"
 
 # Install AWS Provider
 echo "⏳ Installing AWS S3 Provider (v2 compatible)..."
 cat <<EOF | kubectl apply -f -
-apiVersion: pkg.crossplane.io/v1
+EapiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
-  name: provider-aws-s3
+  name: upbound-provider-aws-s3
 spec:
-  package: xpkg.upbound.io/upbound/provider-aws-s3:v1.18.0
-  packagePullPolicy: IfNotPresent
+  package: xpkg.upbound.io/upbound/provider-aws-s3:v2.3.0
 EOF
 
-# Check if provider was created
-if kubectl get provider provider-aws-s3 &>/dev/null; then
-    echo "✅ Provider resource created"
-else
-    echo "❌ Failed to create provider resource"
-    echo "Checking if Provider CRD exists..."
-    kubectl get crd providers.pkg.crossplane.io
-    exit 1
-fi
 
 echo "✅ Provider installation started"
-
-# Wait for provider to be installed first (not just healthy)
-echo "⏳ Waiting for provider to be installed (this may take 2-3 minutes)..."
-max_attempts=60
-attempt=0
-while [ $attempt -lt $max_attempts ]; do
-    installed=$(kubectl get provider provider-aws-s3 -o jsonpath='{.status.conditions[?(@.type=="Installed")].status}' 2>/dev/null)
-    if [ "$installed" == "True" ]; then
-        echo "✅ Provider installed successfully"
-        break
-    fi
-    echo -n "."
-    sleep 5
-    attempt=$((attempt + 1))
-done
-
-if [ $attempt -eq $max_attempts ]; then
-    echo ""
-    echo "❌ Provider installation timed out"
-    echo "Current provider status:"
-    kubectl get provider provider-aws-s3 -o yaml
-    exit 1
-fi
-
-# Now wait for provider to be healthy
-echo "⏳ Waiting for provider to be healthy..."
-kubectl wait --for=condition=Healthy provider.pkg.crossplane.io/provider-aws-s3 --timeout=300s || {
-    echo "❌ Provider failed to become healthy"
-    echo "Provider status:"
-    kubectl describe provider provider-aws-s3
-    echo ""
-    echo "Provider pods:"
-    kubectl get pods -n crossplane-system
-    exit 1
-}
-echo "✅ AWS S3 Provider is healthy"
 
 # AWS credentials
 cat > /root/aws-credentials.txt <<'EOF'
@@ -203,7 +133,7 @@ kubectl create secret generic aws-creds \
 echo "✅ AWS credentials secret created"
 
 # Provider config
-cat > /root/provider-config.yaml <<'EOF'
+cat <<EOF | kubectl -f -
 apiVersion: aws.upbound.io/v1beta1
 kind: ProviderConfig
 metadata:
@@ -227,58 +157,9 @@ spec:
   s3_force_path_style: true
 EOF
 
-# Apply provider config
-echo "⏳ Configuring AWS Provider..."
-kubectl apply -f /root/provider-config.yaml
-
-# Wait a moment for the ProviderConfig to be processed
-echo "⏳ Waiting for ProviderConfig CRD to be available..."
-max_attempts=30
-attempt=0
-while [ $attempt -lt $max_attempts ]; do
-    if kubectl get crd providerconfigs.aws.upbound.io &>/dev/null; then
-        echo "✅ ProviderConfig CRD is available"
-        break
-    fi
-    echo -n "."
-    sleep 2
-    attempt=$((attempt + 1))
-done
-
-if [ $attempt -eq $max_attempts ]; then
-    echo ""
-    echo "❌ ProviderConfig CRD not found after waiting"
-    echo "Available CRDs:"
-    kubectl get crd | grep -i provider
-    exit 1
-fi
-
-# Now apply the ProviderConfig
-echo "⏳ Applying ProviderConfig..."
-kubectl apply -f /root/provider-config.yaml
-
-# Verify ProviderConfig was created
-sleep 5
-if kubectl get providerconfig default &>/dev/null; then
-    echo "✅ Provider configured"
-else
-    echo "⚠️  Warning: ProviderConfig may not be ready yet"
-    echo "Checking available ProviderConfigs..."
-    kubectl get providerconfig --all-namespaces 2>/dev/null || echo "None found"
-    echo "Retrying ProviderConfig creation..."
-    kubectl apply -f /root/provider-config.yaml
-    sleep 5
-    if kubectl get providerconfig default &>/dev/null; then
-        echo "✅ Provider configuration applied"
-    else
-        echo "❌ Failed to create ProviderConfig"
-        kubectl get crd | grep providerconfig
-        exit 1
-    fi
-fi
-
 # S3 bucket
-cat > /root/s3-bucket.yaml <<'EOF'
+
+cat <<EOF | kubectl -f -
 apiVersion: s3.aws.upbound.io/v1beta1
 kind: Bucket
 metadata:
@@ -300,8 +181,6 @@ echo "  • Crossplane $(kubectl get deployment crossplane -n crossplane-system 
 echo "  • AWS S3 Provider"
 echo "  • LocalStack (AWS simulator)"
 echo ""
-echo "📁 Files created in /root/:"
-ls -1 /root/*.yaml /root/*.txt 2>/dev/null | sed 's/^/  • /'
 echo ""
 echo "🔍 Quick verification:"
 echo "  • Crossplane pods: $(kubectl get pods -n crossplane-system --no-headers 2>/dev/null | wc -l) running"
