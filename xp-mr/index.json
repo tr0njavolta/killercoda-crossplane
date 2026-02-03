@@ -1,0 +1,48 @@
+{
+    "title": "Crossplane Managed Resources with AWS",
+    "description": "Learn how to use Crossplane to manage AWS resources directly. Install a provider, configure credentials, and create cloud infrastructure as Kubernetes resources!",
+    "difficulty": "beginner",
+    "time": "15 minutes",
+    "details": {
+        "steps": [
+            {
+                "title": "Verify the Installation",
+                "text": "step1.md"
+            },
+            {
+                "title": "Understand the Provider",
+                "text": "step2.md"
+            },
+            {
+                "title": "Explore the Provider Configuration",
+                "text": "step3.md"
+            },
+            {
+                "title": "Create Your First Managed Resource",
+                "text": "step4.md"
+            },
+            {
+                "title": "Manage and Clean Up Resources",
+                "text": "step5.md"
+            }
+        ],
+        "assets": {
+            "host01": [
+                {"file": "setup.sh", "target": "/root", "chmod": "+x"}
+            ]
+        },
+        "intro": {
+            "text": "intro.md",
+            "foreground": "setup.sh"
+        },
+        "finish": {
+            "text": "finish.md"
+        }
+    },
+    "backend": {
+        "imageid": "kubernetes-kubeadm-2nodes"
+    },
+    "interface": {
+        "layout": "ide"
+    }
+}

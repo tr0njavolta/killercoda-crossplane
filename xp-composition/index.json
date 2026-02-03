@@ -1,21 +1,29 @@
 {
-    "title": "Crossplane v2 with LocalStack",
-    "description": "Learn Crossplane v2 by creating AWS resources using LocalStack - everything pre-installed!",
+    "title": "Crossplane Composition with KCL",
+    "description": "Learn how to use KCL (Kross Composition Language) to build dynamic Crossplane compositions. Create custom Kubernetes APIs and deploy applications declaratively!",
     "difficulty": "beginner",
-    "time": "10 minutes",
+    "time": "15 minutes",
     "details": {
         "steps": [
             {
-                "title": "Verify the Environment",
+                "title": "Verify the Installation",
                 "text": "step1.md"
             },
             {
-                "title": "Create Your First S3 Bucket",
+                "title": "Understand the CompositeResourceDefinition",
                 "text": "step2.md"
             },
             {
-                "title": "Explore and Modify Resources",
+                "title": "Explore the KCL Composition",
                 "text": "step3.md"
+            },
+            {
+                "title": "Create and Use Your First App",
+                "text": "step4.md"
+            },
+            {
+                "title": "Modify and Scale Applications",
+                "text": "step5.md"
             }
         ],
         "assets": {
