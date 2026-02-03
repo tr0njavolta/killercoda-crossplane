@@ -10,20 +10,10 @@ export KUBECONFIG=~/.kube/config
 mkdir -p /root/xp-mr
 cd /root/xp-mr
 
-# Setup Theia IDE to hide hidden files
-mkdir -p /root/.theia
-cat > /root/.theia/settings.json <<'EOF'
+# Setup IDE to hide hidden files
+mkdir -p /root/xp-mr/.vscode
+cat > /root/xp-mr/.vscode/settings.json <<'EOF'
 {
-  "files.enableTrash": false,
-  "editor.autoSave": "on",
-  "editor.formatOnSave": false,
-  "problems.decorations.tabbar.enabled": false,
-  "problems.autoReveal": false,
-  "preview.openByDefault": true,
-  "workbench.colorTheme": "dark",
-  "window.menuBarVisibility": "compact",
-  "editor.suggest.hideStatusBar": false,
-  "workbench.statusBar.visible": false,
   "files.exclude": {
     "**/.git": true,
     "**/.claude": true,
@@ -32,12 +22,12 @@ cat > /root/.theia/settings.json <<'EOF'
   "files.watcherExclude": {
     "**/.git/objects/**": true,
     "**/.git/subtree-cache/**": true,
-    "**/node_modules/**": true,
-    "**/filesystem**": true
+    "**/node_modules/**": true
   }
 }
 EOF
 
+mkdir -p /root/.theia
 cat > /root/.theia/recentworkspace.json <<'EOF'
 {"recentRoots":["file:///root/xp-mr"]}
 EOF
