@@ -10,26 +10,28 @@ export KUBECONFIG=~/.kube/config
 mkdir -p /root/xp-composition
 cd /root/xp-composition
 
-# Setup IDE to hide hidden files
-mkdir -p /root/xp-composition/.vscode
-cat > /root/xp-composition/.vscode/settings.json <<'EOF'
+# Setup Theia IDE
+mkdir -p /root/.theia
+cat > /root/.theia/settings.json <<'EOF'
 {
   "files.exclude": {
-    "**/.git": true,
-    "**/.claude": true,
-    "**/.*": true
-  },
-  "files.watcherExclude": {
-    "**/.git/objects/**": true,
-    "**/.git/subtree-cache/**": true,
-    "**/node_modules/**": true
+    ".git": true,
+    ".claude": true,
+    ".*": true
   }
 }
 EOF
 
-mkdir -p /root/.theia
 cat > /root/.theia/recentworkspace.json <<'EOF'
 {"recentRoots":["file:///root/xp-composition"]}
+EOF
+
+# Configure enter-folder extension
+mkdir -p /root/.theia
+cat > /root/.theia/enter-folder.json <<'EOF'
+{
+  "folderPath": "/root/xp-composition"
+}
 EOF
 
 # Prerequisites check

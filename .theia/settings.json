@@ -10,9 +10,9 @@
   "editor.suggest.hideStatusBar": false,
   "workbench.statusBar.visible": false,
   "files.exclude": {
-    "**/.git": true,
-    "**/.claude": true,
-    "**/.*": true
+    ".git": true,
+    ".claude": true,
+    ".*": true
   },
   "files.watcherExclude": {
     "**/.git/objects/**": true,
