@@ -38,6 +38,10 @@ cat > /root/.theia/settings.json <<'EOF'
 }
 EOF
 
+cat > /root/.theia/recentworkspace.json <<'EOF'
+{"recentRoots":["file:///root/xp-mr"]}
+EOF
+
 # Prerequisites check
 echo "📋 Prerequisites:"
 echo "  • Kubernetes cluster running"
