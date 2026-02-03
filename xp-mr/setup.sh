@@ -10,6 +10,34 @@ export KUBECONFIG=~/.kube/config
 mkdir -p /root/xp-mr
 cd /root/xp-mr
 
+# Setup Theia IDE to hide hidden files
+mkdir -p /root/.theia
+cat > /root/.theia/settings.json <<'EOF'
+{
+  "files.enableTrash": false,
+  "editor.autoSave": "on",
+  "editor.formatOnSave": false,
+  "problems.decorations.tabbar.enabled": false,
+  "problems.autoReveal": false,
+  "preview.openByDefault": true,
+  "workbench.colorTheme": "dark",
+  "window.menuBarVisibility": "compact",
+  "editor.suggest.hideStatusBar": false,
+  "workbench.statusBar.visible": false,
+  "files.exclude": {
+    "**/.git": true,
+    "**/.claude": true,
+    "**/.*": true
+  },
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": true,
+    "**/filesystem**": true
+  }
+}
+EOF
+
 # Prerequisites check
 echo "📋 Prerequisites:"
 echo "  • Kubernetes cluster running"
