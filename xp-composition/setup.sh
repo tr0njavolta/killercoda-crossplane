@@ -7,6 +7,8 @@ echo "Crossplane with KCL Composition Setup"
 echo "=========================================="
 
 export KUBECONFIG=~/.kube/config
+mkdir -p /root/xp-composition
+cd /root/xp-composition
 
 # Prerequisites check
 echo "📋 Prerequisites:"

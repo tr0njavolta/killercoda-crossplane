@@ -43,6 +43,7 @@
         "imageid": "kubernetes-kubeadm-2nodes"
     },
     "interface": {
-        "layout": "ide"
+        "layout": "ide",
+        "root": "/root/xp-mr"
     }
 }

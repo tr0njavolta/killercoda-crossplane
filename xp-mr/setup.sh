@@ -7,6 +7,8 @@ echo "Crossplane Managed Resources Setup"
 echo "=========================================="
 
 export KUBECONFIG=~/.kube/config
+mkdir -p /root/xp-mr
+cd /root/xp-mr
 
 # Prerequisites check
 echo "📋 Prerequisites:"

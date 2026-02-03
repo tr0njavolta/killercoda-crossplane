@@ -1,6 +1,6 @@
 {
-    "title": "Crossplane Composition with KCL",
-    "description": "Learn how to use KCL (Kross Composition Language) to build dynamic Crossplane compositions. Create custom Kubernetes APIs and deploy applications declaratively!",
+    "title": "Get Started with Crossplane Composition",
+    "description": "Learn how to use KCL to build dynamic Crossplane compositions. Create custom Kubernetes APIs and deploy applications declaratively",
     "difficulty": "beginner",
     "time": "15 minutes",
     "details": {
@@ -43,6 +43,7 @@
         "imageid": "kubernetes-kubeadm-2nodes"
     },
     "interface": {
-        "layout": "ide"
+        "layout": "ide",
+        "root": "/root/xp-composition"
     }
 }
