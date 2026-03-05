@@ -212,8 +212,8 @@ done
 echo "Ollama running"
 
 # Pull the model
-echo "Pulling llama3.2:1b (this takes a few minutes)..."
-ollama pull llama3.2:1b
+echo "Pulling llama3.2:3b (this takes a few minutes)..."
+ollama pull llama3.2:3b
 echo "Model ready"
 
 # Install Python requests
@@ -229,7 +229,7 @@ import subprocess
 import sys
 import requests
 
-MODEL = "llama3.2:1b"
+MODEL = "llama3.2:3b"
 OLLAMA_URL = "http://localhost:11434/api/chat"
 
 TOOLS = [
@@ -440,6 +440,7 @@ def main():
 
     # Interactive REPL
     print(f"Infrastructure agent ready (model: {MODEL}). Type 'exit' to quit.\n")
+
     while True:
         try:
             user_input = input("> ").strip()
@@ -472,6 +473,6 @@ echo "  1. Crossplane core components"
 echo "  2. KCL Function for composition"
 echo "  3. App API via CompositeResourceDefinition"
 echo "  4. Composition with governance rules"
-echo "  5. Ollama running llama3.2:1b"
+echo "  5. Ollama running llama3.2:3b"
 echo "  6. Agent at /root/xp-ai/agent.py"
 echo ""
