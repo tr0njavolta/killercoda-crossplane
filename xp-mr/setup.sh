@@ -17,6 +17,7 @@ cat > /root/.theia/settings.json <<'EOF'
   "files.exclude": {
     ".git": true,
     ".claude": true,
+    "filesystem": true,
     ".*": true
   }
 }

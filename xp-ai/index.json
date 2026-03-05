@@ -1,0 +1,51 @@
+{
+    "title": "API-First Infrastructure for AI Agents",
+    "description": "Learn how Crossplane's declarative APIs give AI agents a safe, validated interface to provision infrastructure — without exposing raw Kubernetes complexity",
+    "difficulty": "intermediate",
+    "time": "20 minutes",
+    "details": {
+        "steps": [
+            {
+                "title": "Verify the Setup",
+                "text": "step1.md"
+            },
+            {
+                "title": "The API Contract",
+                "text": "step2.md"
+            },
+            {
+                "title": "The Agent Deploys",
+                "text": "step3.md"
+            },
+            {
+                "title": "What the API Enforces",
+                "text": "step4.md"
+            },
+            {
+                "title": "Autonomous Operations",
+                "text": "step5.md"
+            }
+        ],
+        "assets": {
+            "host01": [
+                {"file": "setup.sh", "target": "/root", "chmod": "+x"}
+            ]
+        },
+        "intro": {
+            "text": "intro.md",
+            "foreground": "setup.sh"
+        },
+        "finish": {
+            "text": "finish.md"
+        }
+    },
+    "backend": {
+        "imageid": "kubernetes-kubeadm-2nodes"
+    },
+    "interface": {
+        "layout": "ide"
+    },
+    "extensions": [
+        "xiangda.enter-folder"
+    ]
+}
