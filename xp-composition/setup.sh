@@ -17,7 +17,8 @@ cat > /root/.theia/settings.json <<'EOF'
   "files.exclude": {
     ".git": true,
     ".claude": true,
-    ".*": true
+    ".*": true,
+    "filesystem": true
   }
 }
 EOF
@@ -203,53 +204,14 @@ EOF
 kubectl apply -f composition.yaml
 echo "✅ Composition with KCL created"
 
-# Step 4: Create example App
-echo ""
-echo "⏳ Step 4: Creating example App..."
-cat > app.yaml <<'EOF'
-apiVersion: example.crossplane.io/v1
-kind: App
-metadata:
-  namespace: default
-  name: my-app
-spec:
-  image: nginx
-EOF
-
-kubectl apply -f app.yaml
-echo "✅ Example App created"
-
 echo ""
 echo "=========================================="
-echo "✅ Setup Complete!"
+echo "Setup Complete!"
 echo "=========================================="
 echo ""
-echo "📝 What was created:"
+echo "What was created:"
 echo "  1. Crossplane core components"
 echo "  2. KCL Function for composition"
 echo "  3. CompositeResourceDefinition (App XRD)"
 echo "  4. Composition with KCL logic (app-kcl)"
-echo "  5. Example App resource (my-app)"
-echo ""
-echo "🔍 Check status:"
-echo "  kubectl get apps"
-echo "  kubectl get apps -o wide"
-echo "  kubectl get deployments -l example.crossplane.io/app=my-app"
-echo "  kubectl get services -l example.crossplane.io/app=my-app"
-echo ""
-echo "📝 Create a new App:"
-echo "  cat <<'APP' | kubectl apply -f -"
-echo "  apiVersion: example.crossplane.io/v1"
-echo "  kind: App"
-echo "  metadata:"
-echo "    name: custom-app"
-echo "  spec:"
-echo "    image: your-image:v1"
-echo "  APP"
-echo ""
-echo "🔄 Update an App (e.g., change image):"
-echo "  kubectl patch app my-app --type merge -p '{\"spec\":{\"image\":\"new-image:v2\"}}'"
-echo ""
-echo "🗑️  Delete an App:"
-echo "  kubectl delete app my-app"
 echo ""

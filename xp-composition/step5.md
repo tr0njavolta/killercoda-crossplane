@@ -1,84 +1,68 @@
-# Modify and Scale Applications
+# Reactive Composition
 
-Crossplane features **reactive composition**: when you change an App, the composition automatically updates resources.
+Every change to an App re-runs the KCL pipeline and updates all composed resources automatically.
 
-## Update an App's Image
+## Update the Image
 
-Change the image of `nodejs-app`:
-
-```bash
-kubectl patch app nodejs-app --type merge -p '{"spec":{"image":"node:20"}}'
-```{{exec}}
-
-Check the Deployment image changed:
+Change the image on `my-app`:
 
 ```bash
-kubectl get deployment -l example.crossplane.io/app=nodejs-app -o jsonpath='{.items[0].spec.template.spec.containers[0].image}'
+kubectl patch app my-app --type merge -p '{"spec":{"image":"nginx:1.25"}}'
 ```{{exec}}
 
-## Edit an App Using kubectl edit
-
-Use the interactive editor:
+Crossplane immediately re-runs the KCL pipeline. Check the Deployment picked up the new image:
 
 ```bash
-kubectl edit app nodejs-app
+kubectl get deployment -l example.crossplane.io/app=my-app -o jsonpath='{.items[0].spec.template.spec.containers[0].image}'
 ```{{exec}}
 
-Change `spec.image: node:20` to `node:19`, save and exit (`:wq` in vim).
+## Create More Apps
 
-Verify the change:
+Each App gets its own independent Deployment and Service:
 
 ```bash
-kubectl get deployment -l example.crossplane.io/app=nodejs-app -o jsonpath='{.items[0].spec.template.spec.containers[0].image}'
+cat <<EOF | kubectl apply -f -
+apiVersion: example.crossplane.io/v1
+kind: App
+metadata:
+  name: second-app
+spec:
+  image: httpd:latest
+EOF
 ```{{exec}}
-
-## Understand Composition Reactivity
-
-Every time you change an App:
-1. Kubernetes detects the change
-2. Crossplane runs the composition again
-3. KCL generates new Deployment and Service specs
-4. Kubernetes updates the resources
-5. App status updates automatically
-
-All within seconds!
-
-## Cleanup Apps
-
-Delete the test apps:
-
-```bash
-kubectl delete app nodejs-app python-app custom-app
-```{{exec}}
-
-Verify they're gone:
 
 ```bash
 kubectl get apps
 ```{{exec}}
 
-Verify Deployments and Services are also deleted:
+```bash
+kubectl get deployments,services
+```{{exec}}
+
+## Delete an App
+
+```bash
+kubectl delete app second-app
+```{{exec}}
+
+All composed resources are cleaned up automatically:
 
 ```bash
 kubectl get deployments,services
 ```{{exec}}
 
-Deleting an App automatically deletes all composed resources!
+## The Full Picture
 
-## Key Concepts
+```
+User applies App (3 lines)
+        ↓
+Crossplane detects change
+        ↓
+KCL function runs
+        ↓
+Generates Deployment + Service
+        ↓
+Status written back to App
+```
 
-**Declarative APIs**: Users declare desired state, not implementation
-**Automatic Composition**: Complex resources created from simple inputs
-**Reactive Updates**: Changes propagate automatically
-**Lifecycle Management**: Delete App → delete all related resources
-**Separation of Concerns**: Platform teams define composition, app teams use it
-
-## Next Steps
-
-Extend the composition to:
-- Accept more parameters (port, replicas, resources)
-- Conditionally create resources based on input
-- Add network policies or monitoring
-- Compose with AWS, GCP, or Azure providers
-
-KCL makes all of this possible and maintainable!
+Platform teams encode the complexity once in KCL. Everyone else gets a simple, validated API.

@@ -1,76 +1,56 @@
-# Understand the CompositeResourceDefinition
+# Apply a Composite — See What Gets Created
 
-The CompositeResourceDefinition (XRD) is the schema that defines your custom Kubernetes API.
-
-## View the Full XRD
-
-Get the complete XRD definition:
-
-```bash
-kubectl get xrd apps.example.crossplane.io -o yaml
-```{{exec}}
-
-## Understanding the Schema
-
-Check the API group:
-
-```bash
-kubectl get xrd apps.example.crossplane.io -o jsonpath='{.spec.group}'
-```{{exec}}
-
-The API group is `example.crossplane.io`, so resources use `apiVersion: example.crossplane.io/v1` and `kind: App`.
-
-Check the input schema (spec):
-
-```bash
-kubectl get xrd apps.example.crossplane.io -o jsonpath='{.spec.versions[0].schema.openAPIV3Schema.properties.spec}'
-```{{exec}}
-
-Check the output schema (status):
-
-```bash
-kubectl get xrd apps.example.crossplane.io -o jsonpath='{.spec.versions[0].schema.openAPIV3Schema.properties.status}'
-```{{exec}}
-
-## Create and Test an App
-
-Let's create a new App:
+Apply a single `App` resource:
 
 ```bash
 cat <<EOF | kubectl apply -f -
 apiVersion: example.crossplane.io/v1
 kind: App
 metadata:
-  name: test-app
+  name: my-app
 spec:
-  image: nginx:1.21
+  image: nginx:latest
 EOF
 ```{{exec}}
 
-Check what was created:
+Wait for it to become ready:
 
 ```bash
-kubectl get app test-app -o yaml
+kubectl get app my-app -w
 ```{{exec}}
+
+Press `Ctrl+C` once you see `READY: True`.
+
+## See Everything That Was Created
+
+That 3-line resource triggered Crossplane to generate a full Deployment:
 
 ```bash
-kubectl get deployment -l example.crossplane.io/app=test-app
+kubectl get deployment -l example.crossplane.io/app=my-app -o yaml
 ```{{exec}}
+
+And a Service:
 
 ```bash
-kubectl get service -l example.crossplane.io/app=test-app
+kubectl get service -l example.crossplane.io/app=my-app -o yaml
 ```{{exec}}
 
-The composition receives `spec.image`, runs KCL, and generates Deployment + Service + status updates.
+## Check the Composed Resources
 
-## Cleanup
-
-Delete the test app:
+Crossplane tracks every resource it manages on the App itself:
 
 ```bash
-kubectl delete app test-app
+kubectl get app my-app -o jsonpath='{.spec.resourceRefs}' | jq .
 ```{{exec}}
 
-Deleting the App automatically deletes all composed resources!
+## Inspect the App Status
 
-In the next step, we'll dive into the KCL code that makes this work.
+The App surfaces information back from its composed resources:
+
+```bash
+kubectl get app my-app -o jsonpath='{.status}' | jq .
+```{{exec}}
+
+Replica count and cluster IP — pulled from the Deployment and Service, written back to the App automatically.
+
+In the next steps, you'll see how all of this is defined: the XRD that creates the custom API, and the KCL code that generates the resources.

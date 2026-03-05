@@ -10,19 +10,19 @@
                 "text": "step1.md"
             },
             {
-                "title": "Understand the CompositeResourceDefinition",
+                "title": "Apply a Composite — See What Gets Created",
                 "text": "step2.md"
             },
             {
-                "title": "Explore the KCL Composition",
+                "title": "Understand the CompositeResourceDefinition",
                 "text": "step3.md"
             },
             {
-                "title": "Create and Use Your First App",
+                "title": "Explore the KCL Composition",
                 "text": "step4.md"
             },
             {
-                "title": "Modify and Scale Applications",
+                "title": "Reactive Composition",
                 "text": "step5.md"
             }
         ],

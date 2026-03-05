@@ -1,78 +1,38 @@
-# Explore the KCL Composition
+# Understand the CompositeResourceDefinition
 
-Now let's look at the KCL code that makes the composition work.
+`kind: App` isn't a built-in Kubernetes resource. It was registered by a CompositeResourceDefinition (XRD), which creates a new custom API.
 
-## View the Composition Resource
-
-Get the Composition definition:
+## View the XRD
 
 ```bash
-kubectl get composition app-kcl -o yaml
+kubectl get xrd apps.example.crossplane.io -o yaml
 ```{{exec}}
 
-## Understanding the Composition Structure
+## What the XRD Defines
 
-Check the CompositeTypeRef (what it composes):
+The API group — what goes in `apiVersion`:
 
 ```bash
-kubectl get composition app-kcl -o jsonpath='{.spec.compositeTypeRef}'
+kubectl get xrd apps.example.crossplane.io -o jsonpath='{.spec.group}'
 ```{{exec}}
 
-Check the Mode (how it composes):
+The input schema — what users can put in `spec`:
 
 ```bash
-kubectl get composition app-kcl -o jsonpath='{.spec.mode}'
+kubectl get xrd apps.example.crossplane.io -o jsonpath='{.spec.versions[0].schema.openAPIV3Schema.properties.spec}' | jq .
 ```{{exec}}
 
-`Pipeline` mode means composition functions are used.
-
-Check the pipeline function:
+The output schema — what gets written back to `status`:
 
 ```bash
-kubectl get composition app-kcl -o jsonpath='{.spec.pipeline[0].functionRef.name}'
+kubectl get xrd apps.example.crossplane.io -o jsonpath='{.spec.versions[0].schema.openAPIV3Schema.properties.status}' | jq .
 ```{{exec}}
 
-## The KCL Source Code
+## The XRD is the API Contract
 
-View the KCL code:
+The XRD does three things:
+1. **Registers** `kind: App` as a valid Kubernetes resource
+2. **Validates** input — Kubernetes rejects Apps with missing or wrong fields
+3. **Defines status** — what information gets surfaced back to the user
 
-```bash
-kubectl get composition app-kcl -o jsonpath='{.spec.pipeline[0].input.spec.source}' | head -50
-```{{exec}}
-
-The KCL code:
-1. Gets the observed App resource (`oxr` = observed XR)
-2. Creates a Deployment using `spec.image`
-3. Creates a Service exposing the Deployment
-4. Updates the App's status with replicas and cluster IP
-
-## How KCL Accesses Runtime Data
-
-KCL uses `option("params")` to access:
-- **oxr**: The App resource the user created
-- **ocds**: Composed resources (Deployment, Service)
-- **dxr**: Desired state of the App
-
-This lets KCL read user input and update status.
-
-## Verify the KCL Logic
-
-Check what got created from `my-app`:
-
-```bash
-kubectl get app my-app -o json | jq '.status'
-```{{exec}}
-
-## The Composition Pipeline
-
-Complete flow:
-1. User creates App with `spec.image`
-2. Crossplane detects the new App
-3. Calls the KCL function
-4. KCL generates Deployment and Service manifests
-5. Crossplane creates those resources
-6. KCL updates App status
-
-All automatic!
-
-In the next step, we'll create more Apps.
+In the next step, you'll see the KCL code that takes `spec.image` and generates the full Deployment and Service you saw in step 2.

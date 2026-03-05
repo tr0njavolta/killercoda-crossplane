@@ -1,111 +1,45 @@
-# Create and Use Your First App
+# Explore the KCL Composition
 
-Now let's leverage the power of Crossplane composition! Declare what you want using the custom `App` API.
+The Composition contains the KCL code responsible for generating the Deployment and Service you saw in step 2.
 
-## Review the Example App
-
-Crossplane already created `my-app` during setup:
+## View the Composition
 
 ```bash
-kubectl get app my-app -o yaml
+kubectl get composition app-kcl -o yaml
 ```{{exec}}
 
-## Create a New App
+## How It's Wired
 
-Create a Node.js app:
+The Composition references which XRD it implements:
 
 ```bash
-cat <<EOF | kubectl apply -f -
-apiVersion: example.crossplane.io/v1
-kind: App
-metadata:
-  name: nodejs-app
-spec:
-  image: node:18
-EOF
+kubectl get composition app-kcl -o jsonpath='{.spec.compositeTypeRef}'
 ```{{exec}}
 
-Watch the status:
+It uses `Pipeline` mode, calling functions in sequence:
 
 ```bash
-kubectl get app nodejs-app -w
+kubectl get composition app-kcl -o jsonpath='{.spec.mode}'
 ```{{exec}}
 
-Press `Ctrl+C` once you see `READY: True`.
-
-## Check What Was Created
-
-Crossplane automatically created a Deployment and Service:
+The function it calls is the KCL runner:
 
 ```bash
-kubectl get deployment -l example.crossplane.io/app=nodejs-app
+kubectl get composition app-kcl -o jsonpath='{.spec.pipeline[0].functionRef.name}'
 ```{{exec}}
+
+## The KCL Source
+
+This is the code that generated the Deployment and Service:
 
 ```bash
-kubectl get service -l example.crossplane.io/app=nodejs-app
+kubectl get composition app-kcl -o jsonpath='{.spec.pipeline[0].input.spec.source}'
 ```{{exec}}
 
-## Check the App Status
+The KCL code:
+1. Reads `oxr` (the observed App resource) to get `spec.image`
+2. Constructs a full Deployment manifest with correct labels, selectors, and ports
+3. Constructs a matching Service manifest
+4. Writes replica count and cluster IP back to the App's `status`
 
-View the App's status:
-
-```bash
-kubectl get app nodejs-app -o jsonpath='{.status}'
-```{{exec}}
-
-## Create Multiple Apps
-
-Create a Python app:
-
-```bash
-cat <<EOF | kubectl apply -f -
-apiVersion: example.crossplane.io/v1
-kind: App
-metadata:
-  name: python-app
-spec:
-  image: python:3.11
-EOF
-```{{exec}}
-
-Create a custom app:
-
-```bash
-cat <<EOF | kubectl apply -f -
-apiVersion: example.crossplane.io/v1
-kind: App
-metadata:
-  name: custom-app
-spec:
-  image: mycompany/myapp:v1.0
-EOF
-```{{exec}}
-
-## List All Apps
-
-See all your Apps:
-
-```bash
-kubectl get apps
-```{{exec}}
-
-View all Deployments and Services:
-
-```bash
-kubectl get deployments
-```{{exec}}
-
-```bash
-kubectl get services
-```{{exec}}
-
-All created automatically!
-
-## The Power of Abstraction
-
-Without Composition: Deployment + Service + labels + port mapping (10+ lines per app)
-With Composition: Just the image (3 lines)
-
-The composition handles Deployment, Service, labels, ports, and status syncing—complex patterns become simple APIs.
-
-In the next step, we'll modify Apps and explore reactive behavior.
+In the next step, you'll see the composition react to changes in real time.
