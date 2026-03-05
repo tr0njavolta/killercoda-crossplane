@@ -1,47 +1,55 @@
 # The Agent Deploys
 
-Here's a script that simulates an AI agent receiving deployment requests and acting on them through the infrastructure API.
+The agent reads the live API schema from `kubectl explain`, builds a system prompt from it, then uses tool calling so the model decides what to do — not string parsing.
 
-## The Agent
-
-```bash
-cat /root/xp-ai/agent.sh
-```{{exec}}
-
-The agent takes a name and image, generates the minimal API call, and applies it. It then polls `status` until the deployment is ready — all through the structured API.
-
-## Run the Agent
-
-Deploy an app:
+## Look at the Agent
 
 ```bash
-/root/xp-ai/agent.sh my-app nginx:latest
+cat /root/xp-ai/agent.py
 ```{{exec}}
 
-Deploy another:
+Two things to notice:
+- `get_system_prompt()` calls `kubectl explain app.spec` at startup — the model always knows the current API surface
+- The tool loop runs until the model stops calling tools, then returns its natural-language summary
+
+## Deploy an App
 
 ```bash
-/root/xp-ai/agent.sh api-server node:20
+python3 /root/xp-ai/agent.py "deploy an nginx app called web-frontend"
 ```{{exec}}
 
-## What the Agent Needed to Know
+The `[tool]` lines show the model's tool calls being executed. The final line is the model's response.
 
-- The API group: `example.crossplane.io/v1`
-- The kind: `App`
-- The field: `spec.image`
-
-That's it. No Kubernetes internals. No label selectors. No port wiring.
-
-## What Came Out
+## Ask for Status
 
 ```bash
-kubectl get apps
+python3 /root/xp-ai/agent.py "what is the status of web-frontend"
 ```{{exec}}
+
+The model calls `get_status`, receives structured JSON back, and summarises it in natural language.
+
+## Deploy Another
 
 ```bash
-kubectl get deployments,services
+python3 /root/xp-ai/agent.py "deploy node:20 as api-server"
 ```{{exec}}
 
-Two apps, each with a correctly wired Deployment and Service, consistent labels, enforced resource limits — none of which the agent specified.
+## List Everything
 
-In the next step, you'll see what the platform enforced that the agent never touched.
+```bash
+python3 /root/xp-ai/agent.py "list all deployed apps"
+```{{exec}}
+
+## Interactive Mode
+
+For a conversation that retains context across turns, run the agent interactively:
+
+```bash
+python3 /root/xp-ai/agent.py
+```{{exec}}
+
+Try asking: *"deploy redis:7 as cache"*, then *"what's running?"*, then *"delete cache"*.
+
+Press `Ctrl+C` to exit.
+
+In the next step, you'll see what Crossplane actually built from those single-field API calls.

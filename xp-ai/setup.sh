@@ -27,7 +27,6 @@ cat > /root/.theia/recentworkspace.json <<'EOF'
 {"recentRoots":["file:///root/xp-ai"]}
 EOF
 
-mkdir -p /root/.theia
 cat > /root/.theia/enter-folder.json <<'EOF'
 {
   "folderPath": "/root/xp-ai"
@@ -202,41 +201,266 @@ EOF
 kubectl apply -f composition.yaml
 echo "Composition created"
 
-# Write the agent script
-cat > /root/xp-ai/agent.sh <<'AGENT'
-#!/bin/bash
-# Simulated AI agent: receives a name and image, deploys via the infrastructure API
+# Install Ollama
+echo "Installing Ollama..."
+curl -fsSL https://ollama.com/install.sh | sh
+systemctl enable --now ollama
+echo "Waiting for Ollama to start..."
+until curl -s http://localhost:11434/api/tags > /dev/null 2>&1; do
+  sleep 2
+done
+echo "Ollama running"
 
-set -e
+# Pull the model
+echo "Pulling llama3.2:1b (this takes a few minutes)..."
+ollama pull llama3.2:1b
+echo "Model ready"
 
-NAME=${1:?"Usage: agent.sh <name> <image>"}
-IMAGE=${2:?"Usage: agent.sh <name> <image>"}
+# Install Python requests
+pip3 install -q requests
 
-echo "[agent] Deploying $NAME with image $IMAGE..."
+# Write the agent
+cat > /root/xp-ai/agent.py <<'AGENT'
+#!/usr/bin/env python3
+"""Infrastructure agent: natural language -> Crossplane App API via tool calling."""
 
-kubectl apply -f - <<EOF
-apiVersion: example.crossplane.io/v1
+import json
+import subprocess
+import sys
+import requests
+
+MODEL = "llama3.2:1b"
+OLLAMA_URL = "http://localhost:11434/api/chat"
+
+TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "deploy_app",
+            "description": "Deploy an application via the Crossplane App API",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "App name (lowercase, hyphens allowed, no spaces)"
+                    },
+                    "image": {
+                        "type": "string",
+                        "description": "OCI container image, e.g. nginx:latest"
+                    }
+                },
+                "required": ["name", "image"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_status",
+            "description": "Get the current status of a deployed application",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "App name"}
+                },
+                "required": ["name"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_apps",
+            "description": "List all currently deployed applications",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_app",
+            "description": "Delete a deployed application and all its composed resources",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "App name to delete"}
+                },
+                "required": ["name"]
+            }
+        }
+    }
+]
+
+
+def deploy_app(name: str, image: str) -> str:
+    manifest = f"""apiVersion: example.crossplane.io/v1
 kind: App
 metadata:
-  name: $NAME
+  name: {name}
 spec:
-  image: $IMAGE
-EOF
+  image: {image}"""
+    result = subprocess.run(
+        ["kubectl", "apply", "-f", "-"],
+        input=manifest, capture_output=True, text=True
+    )
+    if result.returncode == 0:
+        return f"App '{name}' applied with image '{image}'. Crossplane is reconciling."
+    return f"Error: {result.stderr.strip()}"
 
-echo "[agent] Waiting for $NAME to be ready..."
-until kubectl get app "$NAME" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; do
-  sleep 3
-done
 
-ADDRESS=$(kubectl get app "$NAME" -o jsonpath='{.status.address}')
-REPLICAS=$(kubectl get app "$NAME" -o jsonpath='{.status.replicas}')
+def get_status(name: str) -> str:
+    result = subprocess.run(
+        ["kubectl", "get", "app", name, "-o", "json"],
+        capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        return f"App '{name}' not found."
+    app = json.loads(result.stdout)
+    status = app.get("status", {})
+    conditions = status.get("conditions", [])
+    ready = next((c["status"] for c in conditions if c["type"] == "Ready"), "Unknown")
+    return json.dumps({
+        "name": name,
+        "image": app["spec"]["image"],
+        "ready": ready,
+        "replicas": status.get("replicas", 0),
+        "address": status.get("address", "")
+    })
 
-echo "[agent] $NAME is ready"
-echo "[agent]   address:  $ADDRESS"
-echo "[agent]   replicas: $REPLICAS"
+
+def list_apps() -> str:
+    result = subprocess.run(
+        ["kubectl", "get", "apps", "-o", "json"],
+        capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        return "Error listing apps."
+    items = json.loads(result.stdout).get("items", [])
+    if not items:
+        return "No apps deployed."
+    apps = []
+    for item in items:
+        status = item.get("status", {})
+        conditions = status.get("conditions", [])
+        ready = next((c["status"] for c in conditions if c["type"] == "Ready"), "Unknown")
+        apps.append({
+            "name": item["metadata"]["name"],
+            "image": item["spec"]["image"],
+            "ready": ready,
+            "replicas": status.get("replicas", 0)
+        })
+    return json.dumps(apps)
+
+
+def delete_app(name: str) -> str:
+    result = subprocess.run(
+        ["kubectl", "delete", "app", name, "--ignore-not-found"],
+        capture_output=True, text=True
+    )
+    if result.returncode == 0:
+        return f"App '{name}' deleted. All composed resources will be cleaned up."
+    return f"Error: {result.stderr.strip()}"
+
+
+def execute_tool(name: str, args: dict) -> str:
+    if name == "deploy_app":
+        return deploy_app(**args)
+    elif name == "get_status":
+        return get_status(**args)
+    elif name == "list_apps":
+        return list_apps()
+    elif name == "delete_app":
+        return delete_app(**args)
+    return f"Unknown tool: {name}"
+
+
+def get_system_prompt() -> str:
+    schema = subprocess.run(
+        ["kubectl", "explain", "app.spec"],
+        capture_output=True, text=True
+    ).stdout.strip()
+
+    return f"""You are an infrastructure agent. You provision and manage applications \
+on a platform built with Crossplane.
+
+The platform exposes a single API resource:
+
+{schema}
+
+Use the provided tools to deploy, inspect, and delete applications based on \
+what the user asks. After each tool call, give a brief natural-language summary \
+of what happened. Do not invent app names or images — use exactly what the user specifies."""
+
+
+def chat(user_input: str, messages: list) -> tuple[str, list]:
+    messages.append({"role": "user", "content": user_input})
+
+    while True:
+        resp = requests.post(OLLAMA_URL, json={
+            "model": MODEL,
+            "messages": messages,
+            "tools": TOOLS,
+            "stream": False
+        })
+        resp.raise_for_status()
+        msg = resp.json()["message"]
+        messages.append(msg)
+
+        if not msg.get("tool_calls"):
+            return msg.get("content", ""), messages
+
+        for call in msg["tool_calls"]:
+            fn_name = call["function"]["name"]
+            args = call["function"]["arguments"]
+            if isinstance(args, str):
+                args = json.loads(args)
+
+            arg_str = ", ".join(f"{k}={v}" for k, v in args.items())
+            print(f"  [tool] {fn_name}({arg_str})")
+
+            result = execute_tool(fn_name, args)
+            messages.append({"role": "tool", "content": result})
+
+
+def main():
+    system_prompt = get_system_prompt()
+    messages = [{"role": "system", "content": system_prompt}]
+
+    # Single-command mode: python3 agent.py "deploy nginx as web-app"
+    if len(sys.argv) > 1:
+        user_input = " ".join(sys.argv[1:])
+        response, _ = chat(user_input, messages)
+        if response:
+            print(response)
+        return
+
+    # Interactive REPL
+    print(f"Infrastructure agent ready (model: {MODEL}). Type 'exit' to quit.\n")
+    while True:
+        try:
+            user_input = input("> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            break
+        if not user_input:
+            continue
+        if user_input.lower() in ("exit", "quit"):
+            break
+        response, messages = chat(user_input, messages)
+        if response:
+            print(response)
+        print()
+
+
+if __name__ == "__main__":
+    main()
 AGENT
 
-chmod +x /root/xp-ai/agent.sh
+chmod +x /root/xp-ai/agent.py
 
 echo ""
 echo "=========================================="
@@ -248,5 +472,6 @@ echo "  1. Crossplane core components"
 echo "  2. KCL Function for composition"
 echo "  3. App API via CompositeResourceDefinition"
 echo "  4. Composition with governance rules"
-echo "  5. Agent script at /root/xp-ai/agent.sh"
+echo "  5. Ollama running llama3.2:1b"
+echo "  6. Agent at /root/xp-ai/agent.py"
 echo ""

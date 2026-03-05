@@ -1,6 +1,6 @@
 # Verify the Setup
 
-Confirm Crossplane and the platform APIs are ready.
+Confirm everything is ready: Crossplane, the KCL function, the App API, and the local model.
 
 ## Crossplane
 
@@ -17,13 +17,19 @@ kubectl get functions
 ## The Infrastructure API
 
 ```bash
-kubectl get xrd
+kubectl get xrd && kubectl get compositions
 ```{{exec}}
+
+## Ollama and the Model
 
 ```bash
-kubectl get compositions
+ollama list
 ```{{exec}}
 
-All four should be present and healthy.
+`llama3.2:1b` should be present. Check the server is accepting requests:
 
-In the next step, you'll see exactly what the AI agent sees: the API contract.
+```bash
+curl -s http://localhost:11434/api/tags | jq '.models[].name'
+```{{exec}}
+
+All good? In the next step, you'll see exactly what API surface the agent has been given.

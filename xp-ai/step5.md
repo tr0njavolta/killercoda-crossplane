@@ -1,57 +1,36 @@
 # Autonomous Operations
 
-An API-first platform lets agents operate across the full resource lifecycle without human intervention.
+The same API handles the full lifecycle. The agent can deploy, inspect, update, and tear down — all through the same structured interface.
 
-## Update
+## Multi-Step Request
 
-The agent updates an image — the platform reconciles:
+The agent can handle requests that require multiple tool calls:
 
 ```bash
-kubectl patch app my-app --type merge -p '{"spec":{"image":"nginx:1.25"}}'
+python3 /root/xp-ai/agent.py "deploy httpd:2.4 as web-server and then check its status"
+```{{exec}}
+
+Watch the tool calls: the model deploys, then immediately calls `get_status` to verify.
+
+## Update via Re-Deploy
+
+The Crossplane API is declarative — applying a changed image is just another `deploy_app` call:
+
+```bash
+python3 /root/xp-ai/agent.py "update web-frontend to use nginx:1.25"
 ```{{exec}}
 
 ```bash
-kubectl get deployment -l example.crossplane.io/app=my-app -o jsonpath='{.items[0].spec.template.spec.containers[0].image}'
-```{{exec}}
-
-One API call. No Deployment patched directly. No rollout triggered manually.
-
-## Read Status
-
-The agent reads structured status to confirm the deployment is healthy:
-
-```bash
-kubectl get app my-app -o jsonpath='{.status}' | jq .
-```{{exec}}
-
-`status.replicas` and `status.address` are machine-readable. The agent can branch on these values without parsing logs or scraping metrics endpoints.
-
-## Deploy at Scale
-
-The API makes mass operations straightforward:
-
-```bash
-for app in worker-1 worker-2 worker-3; do
-  kubectl apply -f - <<EOF
-apiVersion: example.crossplane.io/v1
-kind: App
-metadata:
-  name: $app
-spec:
-  image: alpine:latest
-EOF
-done
-```{{exec}}
-
-```bash
-kubectl get apps
+kubectl get deployment -l example.crossplane.io/app=web-frontend -o jsonpath='{.items[0].spec.template.spec.containers[0].image}'
 ```{{exec}}
 
 ## Teardown
 
 ```bash
-kubectl delete app worker-1 worker-2 worker-3 api-server
+python3 /root/xp-ai/agent.py "delete web-frontend and api-server"
 ```{{exec}}
+
+Note: the model may call `delete_app` twice, once per app.
 
 ```bash
 kubectl get apps
@@ -61,10 +40,15 @@ kubectl get apps
 kubectl get deployments,services
 ```{{exec}}
 
-All composed resources cleaned up. One delete call per App.
+All composed resources cleaned up.
 
-## The Bigger Picture
+## What Made This Work
 
-The blog post ["Crossplane & AI: The Case for API-First Infrastructure"](https://blog.crossplane.io/crossplane-ai-the-case-for-api-first-infrastructure/) frames this precisely: the bottleneck for AI agents isn't capability — it's that most platforms were built for humans. UIs, runbooks, and informal coordination don't compose into agent workflows.
+The agent is autonomous because the platform is well-structured:
 
-Crossplane's XRDs give agents a stable, validated, machine-readable interface. The Composition ensures governance is structural, not procedural. The agent doesn't need to be trusted with the full platform — just with the API surface it's been given.
+- **Validated API** — the model can't generate invalid infrastructure; Kubernetes rejects it at admission
+- **Structured status** — the model reads JSON back from `get_status`, not logs or HTML
+- **Governance in the platform** — limits, labels, and replica counts are enforced regardless of what the model requests
+- **Declarative reconciliation** — update and delete are the same API surface as create
+
+The model doesn't need to understand Kubernetes. It needs to understand the API.
